@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vitalzeichen-Quiz</title>
+<style>
+  :root {
+    --bg: #f4f7fb; --card: #ffffff; --text: #1d2733; --muted: #5f6b7a;
+    --accent: #2f6fdf; --accent-text: #ffffff; --border: #d9e1ec;
+    --ok-bg: #e3f6e8; --ok: #1f7a3a; --bad-bg: #fde7e7; --bad: #b42323;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #11161d; --card: #1a212b; --text: #e6ebf2; --muted: #9aa6b5;
+      --accent: #5b93f5; --accent-text: #0d1117; --border: #2c3644;
+      --ok-bg: #173323; --ok: #6fd18f; --bad-bg: #3a1c1c; --bad: #f08a8a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #11161d; --card: #1a212b; --text: #e6ebf2; --muted: #9aa6b5;
+    --accent: #5b93f5; --accent-text: #0d1117; --border: #2c3644;
+    --ok-bg: #173323; --ok: #6fd18f; --bad-bg: #3a1c1c; --bad: #f08a8a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; align-items: center; justify-content: center; padding: 24px 16px;
+  }
+  .card {
+    width: 100%; max-width: 560px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px 24px;
+  }
+  h1 { font-size: 1.6rem; margin: 0 0 8px; }
+  p { color: var(--muted); line-height: 1.5; margin: 0 0 20px; }
+  .progress { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 18px; }
+  .bar { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  .meta { font-size: .85rem; color: var(--muted); margin-bottom: 6px; }
+  .question { font-size: 1.2rem; font-weight: 600; margin: 0 0 18px; line-height: 1.4; }
+  .options { display: grid; gap: 10px; }
+  .opt {
+    text-align: left; font: inherit; color: var(--text); background: transparent;
+    border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer;
+  }
+  .opt:hover:not(:disabled) { border-color: var(--accent); }
+  .opt:disabled { cursor: default; }
+  .opt.correct { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); font-weight: 600; }
+  .opt.wrong { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+  .feedback { margin: 16px 0 0; min-height: 1.5em; color: var(--text); }
+  .btn {
+    margin-top: 18px; font: inherit; font-weight: 600; background: var(--accent); color: var(--accent-text);
+    border: 0; border-radius: 10px; padding: 12px 20px; cursor: pointer; width: 100%;
+  }
+  .hidden { display: none; }
+  .score { font-size: 3rem; font-weight: 700; margin: 8px 0; }
+</style>
+</head>
+<body>
+<main class="card">
+  <section id="start">
+    <h1>Vitalzeichen &amp; Atmung</h1>
+    <p>Ein kleines Quiz mit 8 Fragen zu Vitalfunktionen, Atmung, Atemwegen und Atemtraining.</p>
+    <button class="btn" id="startBtn">Quiz starten</button>
+  </section>
+
+  <section id="quiz" class="hidden">
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div class="meta" id="meta"></div>
+    <h2 class="question" id="question"></h2>
+    <div class="options" id="options"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="btn hidden" id="nextBtn">Weiter</button>
+  </section>
+
+  <section id="result" class="hidden">
+    <h1>Geschafft!</h1>
+    <div class="score" id="score"></div>
+    <p id="resultText"></p>
+    <button class="btn" id="restartBtn">Nochmal spielen</button>
+  </section>
+</main>
+
+<script>
+const questions = [
+  {
+    q: "Welche gehört NICHT zu den Vitalfunktionen?",
+    a: ["Atmung", "Puls", "Blutdruck", "Haarwachstum"],
+    c: 3,
+    info: "Die Vitalfunktionen sind Atmung, Puls, Blutdruck und Körpertemperatur."
+  },
+  {
+    q: "Wie hoch ist die normale Körpertemperatur ungefähr?",
+    a: ["ca. 34 °C", "ca. 37 °C", "ca. 39 °C", "ca. 41 °C"],
+    c: 1,
+    info: "Normal sind etwa 36,5 bis 37,5 °C."
+  },
+  {
+    q: "Wofür ist die Atmung zuständig?",
+    a: ["Blut zu filtern", "Sauerstoff aufzunehmen und Kohlendioxid abzugeben", "Nahrung zu verdauen", "Hormone zu bilden"],
+    c: 1,
+    info: "Wir atmen Sauerstoff (O₂) ein und Kohlendioxid (CO₂) aus."
+  },
+  {
+    q: "Wie viele Atemzüge pro Minute macht ein Erwachsener in Ruhe ungefähr?",
+    a: ["3–5", "12–20", "40–60", "über 80"],
+    c: 1,
+    info: "Ein Erwachsener atmet in Ruhe etwa 12- bis 20-mal pro Minute."
+  },
+  {
+    q: "Welcher Weg der Atemluft ist richtig?",
+    a: [
+      "Nase → Rachen → Kehlkopf → Luftröhre → Bronchien → Lunge",
+      "Nase → Luftröhre → Rachen → Lunge → Kehlkopf",
+      "Mund → Speiseröhre → Magen → Lunge",
+      "Nase → Bronchien → Kehlkopf → Rachen → Lunge"
+    ],
+    c: 0,
+    info: "Die Luft strömt über Nase/Mund, Rachen, Kehlkopf und Luftröhre in die Bronchien und Lunge."
+  },
+  {
+    q: "Wo findet der Gasaustausch statt?",
+    a: ["Im Kehlkopf", "In der Luftröhre", "In den Lungenbläschen (Alveolen)", "Im Rachen"],
+    c: 2,
+    info: "In den winzigen Lungenbläschen gelangt Sauerstoff ins Blut."
+  },
+  {
+    q: "Welche Übung ist eine Art von Atemtraining?",
+    a: ["Kniebeugen", "Lippenbremse", "Sudoku", "Wadendehnung"],
+    c: 1,
+    info: "Bei der Lippenbremse atmet man langsam durch leicht geschlossene Lippen aus. Auch Bauchatmung gehört zum Atemtraining."
+  },
+  {
+    q: "Welcher Muskel arbeitet bei der Bauchatmung vor allem?",
+    a: ["Bizeps", "Herzmuskel", "Zwerchfell", "Wadenmuskel"],
+    c: 2,
+    info: "Das Zwerchfell ist der wichtigste Atemmuskel."
+  }
+];
+
+const $ = id => document.getElementById(id);
+let i = 0, score = 0;
+
+function show(id) {
+  ["start", "quiz", "result"].forEach(s => $(s).classList.toggle("hidden", s !== id));
+}
+
+function render() {
+  const item = questions[i];
+  $("meta").textContent = `Frage ${i + 1} von ${questions.length}`;
+  $("bar").style.width = `${(i / questions.length) * 100}%`;
+  $("question").textContent = item.q;
+  $("feedback").textContent = "";
+  $("nextBtn").classList.add("hidden");
+  $("options").innerHTML = "";
+  item.a.forEach((text, idx) => {
+    const b = document.createElement("button");
+    b.className = "opt";
+    b.textContent = text;
+    b.onclick = () => answer(idx);
+    $("options").appendChild(b);
+  });
+}
+
+function answer(idx) {
+  const item = questions[i];
+  const buttons = $("options").children;
+  [...buttons].forEach(b => b.disabled = true);
+  buttons[item.c].classList.add("correct");
+  if (idx === item.c) {
+    score++;
+    $("feedback").textContent = "✅ Richtig! " + item.info;
+  } else {
+    buttons[idx].classList.add("wrong");
+    $("feedback").textContent = "❌ Leider falsch. " + item.info;
+  }
+  $("nextBtn").textContent = i === questions.length - 1 ? "Ergebnis anzeigen" : "Weiter";
+  $("nextBtn").classList.remove("hidden");
+}
+
+function next() {
+  i++;
+  if (i < questions.length) return render();
+  $("bar").style.width = "100%";
+  $("score").textContent = `${score} / ${questions.length}`;
+  const pct = score / questions.length;
+  $("resultText").textContent =
+    pct === 1 ? "Perfekt! Du kennst dich super aus." :
+    pct >= 0.6 ? "Gut gemacht! Fast alles gewusst." :
+    "Schau dir die Folien nochmal an und versuch es erneut.";
+  show("result");
+}
+
+function start() { i = 0; score = 0; show("quiz"); render(); }
+
+$("startBtn").onclick = start;
+$("restartBtn").onclick = start;
+$("nextBtn").onclick = next;
+</script>
+</body>
+</html>
