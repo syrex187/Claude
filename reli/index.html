@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Reli-Check">
+<meta name="theme-color" content="#140f2e">
+<title>Reli-Check</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<style>
+  :root {
+    --bg1: #140f2e; --bg2: #2a1458; --bg3: #0d2b4a;
+    --card: rgba(255,255,255,0.07); --card-border: rgba(255,255,255,0.14);
+    --text: #f4f1ff; --muted: #b9b0d9;
+    --a1: #ff5fa2; --a2: #8b5cf6; --a3: #22d3ee; --good: #34d399; --bad: #fb7185;
+    --input: rgba(0,0,0,0.25);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--text);
+    background-color: var(--bg1);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Segoe UI", Roboto, system-ui, sans-serif;
+    padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(255,95,162,0.35), transparent 40%),
+      radial-gradient(circle at 85% 20%, rgba(34,211,238,0.28), transparent 40%),
+      radial-gradient(circle at 50% 90%, rgba(139,92,246,0.4), transparent 50%),
+      linear-gradient(160deg, var(--bg1), var(--bg2) 50%, var(--bg3));
+  }
+  .wrap { max-width: 760px; margin: 0 auto; position: relative; }
+
+  header { text-align: center; margin: 12px 0 24px; }
+  .badge {
+    display: inline-block; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    background: rgba(255,255,255,0.1); border: 1px solid var(--card-border); color: var(--muted);
+  }
+  h1 {
+    font-size: clamp(34px, 7vw, 56px); margin: 14px 0 6px; line-height: 1.05; font-weight: 900;
+    background: linear-gradient(90deg, var(--a1), var(--a2), var(--a3));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .sub { color: var(--muted); margin: 0; font-size: 17px; }
+
+  .tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
+  .tab {
+    flex: 1; max-width: 220px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--card-border);
+    background: var(--card); color: var(--text); font-size: 16px; font-weight: 700; cursor: pointer;
+    font-family: inherit;
+  }
+  .tab.active { background: linear-gradient(135deg, var(--a1), var(--a2)); border-color: transparent; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 22px;
+    padding: 20px; margin-bottom: 16px;
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  }
+  .card h2 { margin: 0 0 4px; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+  .card .hint { color: var(--muted); margin: 0 0 14px; font-size: 14px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+
+  label.field { display: block; font-weight: 600; font-size: 15px; margin-bottom: 6px; color: var(--muted); }
+  input[type="text"], input[type="date"], textarea, select {
+    width: 100%; font-size: 16px; font-family: inherit; color: var(--text);
+    background: var(--input); border: 1px solid var(--card-border); border-radius: 12px;
+    padding: 12px 14px; outline: none; -webkit-appearance: none; appearance: none; min-height: 48px;
+  }
+  input[type="date"] { color-scheme: dark; }
+  textarea { resize: vertical; min-height: 84px; }
+  input:focus, textarea:focus { border-color: var(--a3); box-shadow: 0 0 0 3px rgba(34,211,238,0.25); }
+  ::placeholder { color: rgba(255,255,255,0.35); }
+
+  /* Sterne */
+  .stars { display: flex; gap: 6px; flex-wrap: wrap; }
+  .star {
+    font-size: 40px; line-height: 1; background: none; border: none; cursor: pointer; padding: 4px;
+    filter: grayscale(1) opacity(.35); transition: transform .15s, filter .15s;
+  }
+  .star.on { filter: none; transform: scale(1.08); }
+  .star:active { transform: scale(.9); }
+
+  /* Slider */
+  .slider-row { margin-bottom: 18px; }
+  .slider-row:last-child { margin-bottom: 0; }
+  .slider-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 10px; }
+  .slider-head span:first-child { font-weight: 700; }
+  .slider-val {
+    font-weight: 800; padding: 4px 12px; border-radius: 999px; background: rgba(255,255,255,0.1);
+    white-space: nowrap; font-size: 15px;
+  }
+  .slider-label { text-align: center; font-size: 15px; color: var(--muted); margin-top: 6px; min-height: 20px; }
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 12px; border-radius: 999px;
+    background: linear-gradient(90deg, var(--a3), var(--a2), var(--a1)); outline: none; margin: 10px 0;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 34px; height: 34px; border-radius: 50%;
+    background: #fff; border: 4px solid var(--a2); box-shadow: 0 3px 10px rgba(0,0,0,.4); cursor: pointer;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 4px solid var(--a2); cursor: pointer;
+  }
+
+  /* Toggles */
+  .toggles { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .toggle {
+    display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 14px; cursor: pointer;
+    background: var(--input); border: 2px solid var(--card-border); color: var(--text);
+    font-size: 15px; font-weight: 600; text-align: left; font-family: inherit; min-height: 56px;
+    transition: border-color .15s, background .15s, transform .1s;
+  }
+  .toggle .emo { font-size: 24px; }
+  .toggle.on { border-color: var(--good); background: rgba(52,211,153,0.15); }
+  .toggle:active { transform: scale(.97); }
+  #filmBox { margin-top: 12px; display: none; }
+  #filmBox.show { display: block; }
+
+  /* Zähler */
+  .counters { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .counter {
+    background: var(--input); border: 1px solid var(--card-border); border-radius: 14px; padding: 12px;
+    text-align: center;
+  }
+  .counter .what { font-weight: 600; font-size: 14px; color: var(--muted); min-height: 36px; }
+  .counter .ctl { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 6px; }
+  .counter button {
+    width: 46px; height: 46px; border-radius: 50%; border: none; font-size: 24px; font-weight: 800; cursor: pointer;
+    background: rgba(255,255,255,0.12); color: var(--text); font-family: inherit;
+  }
+  .counter button:active { background: var(--a2); }
+  .counter .num { font-size: 30px; font-weight: 900; min-width: 44px; }
+
+  /* Buttons */
+  .btn {
+    display: block; width: 100%; padding: 18px; border-radius: 18px; border: none; cursor: pointer;
+    font-size: 19px; font-weight: 900; color: #fff; font-family: inherit; letter-spacing: .02em;
+    background: linear-gradient(135deg, var(--a1), var(--a2) 55%, var(--a3));
+    box-shadow: 0 10px 30px rgba(255,95,162,0.35); transition: transform .1s;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn.ghost { background: var(--card); border: 1px solid var(--card-border); box-shadow: none; font-size: 16px; padding: 14px; }
+  .btn.danger { background: rgba(251,113,133,0.15); border: 1px solid var(--bad); color: var(--bad); box-shadow: none; font-size: 16px; padding: 14px; }
+  .err { color: var(--bad); font-weight: 700; text-align: center; margin: 10px 0 0; min-height: 22px; }
+
+  /* Ergebnis */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(5,3,15,0.75); display: none; align-items: center; justify-content: center;
+    padding: 20px; z-index: 50; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  .overlay.show { display: flex; }
+  .result {
+    max-width: 480px; width: 100%; text-align: center; padding: 28px 22px;
+    background: linear-gradient(160deg, #2a1458, #140f2e); border: 1px solid var(--card-border); border-radius: 26px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5); animation: pop .35s cubic-bezier(.2,1.4,.4,1);
+    max-height: 90vh; overflow-y: auto;
+  }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .result .big { font-size: 72px; margin: 0; }
+  .result .score {
+    font-size: 64px; font-weight: 900; margin: 4px 0;
+    background: linear-gradient(90deg, var(--a1), var(--a3)); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .result h3 { margin: 4px 0 8px; font-size: 24px; }
+  .result p { color: var(--muted); margin: 0 0 18px; line-height: 1.45; }
+
+  /* Verlauf */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  @media (max-width: 560px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--card); border: 1px solid var(--card-border); border-radius: 18px; padding: 16px; text-align: center; }
+  .stat .v { font-size: 30px; font-weight: 900; }
+  .stat .k { color: var(--muted); font-size: 13px; font-weight: 600; margin-top: 2px; }
+  .entry { position: relative; }
+  .entry .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .entry .date { font-weight: 800; font-size: 17px; }
+  .entry .topic { color: var(--muted); font-size: 14px; margin-top: 2px; word-break: break-word; }
+  .entry .pts { font-size: 26px; font-weight: 900; white-space: nowrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { font-size: 13px; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,0.1); white-space: nowrap; }
+  .quote { margin-top: 10px; font-style: italic; color: var(--text); border-left: 3px solid var(--a1); padding-left: 10px; word-break: break-word; }
+  .del {
+    margin-top: 12px; background: none; border: 1px solid var(--card-border); color: var(--muted); border-radius: 10px;
+    padding: 8px 12px; font-size: 14px; cursor: pointer; font-family: inherit;
+  }
+  .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+  .empty .big { font-size: 50px; }
+  .hidden { display: none !important; }
+
+  /* Konfetti */
+  .confetti { position: fixed; top: -20px; width: 10px; height: 16px; z-index: 60; pointer-events: none; border-radius: 2px;
+    animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: .8; } }
+
+  /* Installieren-Banner */
+  .install {
+    display: none; align-items: center; gap: 14px; margin-bottom: 16px; padding: 14px 16px;
+    border-radius: 18px; border: 1px solid var(--card-border);
+    background: linear-gradient(135deg, rgba(255,95,162,0.22), rgba(34,211,238,0.18));
+  }
+  .install.show { display: flex; }
+  .install img { width: 52px; height: 52px; border-radius: 12px; flex: none; }
+  .install .txt { flex: 1; font-size: 15px; line-height: 1.4; }
+  .install .txt b { display: block; font-size: 16px; }
+  .install .share {
+    display: inline-block; vertical-align: -3px; width: 18px; height: 18px;
+  }
+  .install .acts { display: flex; flex-direction: column; gap: 6px; flex: none; }
+  .install button {
+    border: none; border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 700; cursor: pointer;
+    font-family: inherit; color: #fff; background: linear-gradient(135deg, var(--a1), var(--a2));
+  }
+  .install button.x { background: rgba(255,255,255,0.12); color: var(--muted); }
+
+  footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="badge">✨ Offizielles Bewertungsportal ✨</span>
+    <h1>Reli-Check</h1>
+    <p class="sub">Die Religionsstunde bei <b>Frau Miehs</b> – ehrlich bewertet.</p>
+  </header>
+
+  <div class="install" id="install" role="region" aria-label="App installieren">
+    <img src="icon-180.png" alt="">
+    <div class="txt" id="installTxt"></div>
+    <div class="acts">
+      <button type="button" id="installBtn" class="hidden">Installieren</button>
+      <button type="button" class="x" id="installClose" aria-label="Hinweis schließen">Später</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-view="form" type="button">📝 Bewerten</button>
+    <button class="tab" data-view="history" type="button">📊 Verlauf</button>
+  </div>
+
+  <!-- ============ FORMULAR ============ -->
+  <form id="form" autocomplete="off" novalidate>
+    <div class="card">
+      <h2>📅 Die Basics</h2>
+      <p class="hint">Wann war die Stunde und worum ging's?</p>
+      <div class="grid2">
+        <div>
+          <label class="field" for="date">Datum</label>
+          <input type="date" id="date" required>
+        </div>
+        <div>
+          <label class="field" for="topic">Thema der Stunde</label>
+          <input type="text" id="topic" placeholder="z. B. Die zehn Gebote" maxlength="80">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>⭐ Gesamtnote</h2>
+      <p class="hint">Wie viele Sterne verdient die Stunde?</p>
+      <div class="stars" id="stars" role="radiogroup" aria-label="Sterne"></div>
+    </div>
+
+    <div class="card">
+      <h2>🎚️ Die Skalen</h2>
+      <p class="hint">Schieb die Regler, so wie es sich angefühlt hat.</p>
+      <div id="sliders"></div>
+    </div>
+
+    <div class="card">
+      <h2>✅ Was ist passiert?</h2>
+      <p class="hint">Tippe alles an, was zutrifft.</p>
+      <div class="toggles" id="toggles"></div>
+      <div id="filmBox">
+        <label class="field" for="film" style="margin-top:4px">🍿 Welcher Film / welches Video?</label>
+        <input type="text" id="film" placeholder="z. B. Die Passion Christi" maxlength="80">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🔢 Strichliste</h2>
+      <p class="hint">Wie oft ist das passiert?</p>
+      <div class="counters" id="counters"></div>
+    </div>
+
+    <div class="card">
+      <h2>💬 Zitat &amp; Kommentar</h2>
+      <p class="hint">Der beste Spruch der Stunde und dein Fazit.</p>
+      <label class="field" for="quote">Zitat der Stunde</label>
+      <input type="text" id="quote" placeholder="„Wer nicht zuhört, schreibt ab.“" maxlength="140">
+      <div style="height:12px"></div>
+      <label class="field" for="comment">Kommentar</label>
+      <textarea id="comment" placeholder="Was war los?" maxlength="400"></textarea>
+    </div>
+
+    <button class="btn" type="submit">🚀 Bewertung abschicken</button>
+    <p class="err" id="err" role="alert"></p>
+  </form>
+
+  <!-- ============ VERLAUF ============ -->
+  <section id="history" class="hidden">
+    <div class="stats" id="stats"></div>
+    <div id="list"></div>
+    <button class="btn danger hidden" id="clearAll" type="button">🗑️ Alle Bewertungen löschen</button>
+  </section>
+
+  <footer>Gespeichert wird nur auf diesem Gerät.</footer>
+</div>
+
+<!-- ============ ERGEBNIS ============ -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="resTitle">
+  <div class="result">
+    <p class="big" id="resEmoji">🎉</p>
+    <div class="score" id="resScore">0</div>
+    <h3 id="resTitle">Titel</h3>
+    <p id="resText">Text</p>
+    <button class="btn" id="resHistory" type="button">📊 Zum Verlauf</button>
+    <div style="height:10px"></div>
+    <button class="btn ghost" id="resClose" type="button">Neue Bewertung</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "reliCheck.v1";
+
+  // ---------- Konfiguration ----------
+  var SLIDERS = [
+    { id: "chill", name: "😌 Chill-Faktor der Stunde", min: 0, max: 10, start: 5,
+      labels: ["Purer Stress 😰", "Eher anstrengend 😓", "Ganz okay 🙂", "Schön entspannt 😎", "Wellness-Oase 🧖"] },
+    { id: "mood", name: "🌈 Laune von Frau Miehs", min: 0, max: 10, start: 5,
+      labels: ["Gewitterwolke ⛈️", "Leicht genervt 😐", "Normal drauf 🙂", "Gut gelaunt 😄", "Sonnenschein pur ☀️"] },
+    { id: "boring", name: "🥱 Langeweile-Level", min: 0, max: 10, start: 5,
+      labels: ["Mega spannend 🤩", "Interessant 🤔", "Geht so 😶", "Zäh wie Kaugummi 🫠", "Fast eingeschlafen 😴"] },
+    { id: "learned", name: "🧠 Wie viel hab ich gelernt?", min: 0, max: 10, start: 5,
+      labels: ["Null komma nix 🫥", "Ein bisschen 🤏", "Solide 📘", "Richtig viel 🎓", "Erleuchtet ✨"] },
+    { id: "deep", name: "🌀 Philosophie-Tiefe", min: 0, max: 10, start: 5,
+      labels: ["Flach wie ein Blatt 📄", "Ein bisschen tief 💧", "Nachdenklich 🤔", "Sehr deep 🌊", "Sinn des Lebens gelöst 🌌"] }
+  ];
+
+  var TOGGLES = [
+    { id: "film", emo: "🎬", name: "Film geschaut" },
+    { id: "early", emo: "🏃", name: "Früher Schluss" },
+    { id: "noHw", emo: "🥳", name: "Keine Hausaufgaben" },
+    { id: "group", emo: "👥", name: "Gruppenarbeit" },
+    { id: "test", emo: "📝", name: "Test / Abfrage" },
+    { id: "music", emo: "🎵", name: "Lied gesungen" },
+    { id: "talk", emo: "🗣️", name: "Diskussion" },
+    { id: "snack", emo: "🍪", name: "Snacks erlaubt" }
+  ];
+
+  var COUNTERS = [
+    { id: "god", name: "Wie oft „Gott“ gesagt?" },
+    { id: "laugh", name: "Lachflashs in der Klasse" },
+    { id: "clock", name: "Wie oft auf die Uhr geschaut?" },
+    { id: "sleep", name: "Leute eingenickt" }
+  ];
+
+  // ---------- Zustand ----------
+  var state = { stars: 0, toggles: {}, counters: {} };
+
+  // ---------- Hilfen ----------
+  function $(id) { return document.getElementById(id); }
+
+  function el(tag, attrs, text) {
+    var e = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        if (k === "class") e.className = attrs[k];
+        else e.setAttribute(k, attrs[k]);
+      });
+    }
+    if (text !== undefined && text !== null) e.textContent = text;
+    return e;
+  }
+
+  function todayISO() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+
+  function formatDate(iso) {
+    var p = String(iso || "").split("-");
+    if (p.length !== 3) return iso || "–";
+    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    if (isNaN(d.getTime())) return iso;
+    try {
+      return d.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" });
+    } catch (e) {
+      return p[2] + "." + p[1] + "." + p[0];
+    }
+  }
+
+  function sliderLabel(cfg, value) {
+    var idx = Math.round((value - cfg.min) / (cfg.max - cfg.min) * (cfg.labels.length - 1));
+    idx = Math.max(0, Math.min(cfg.labels.length - 1, idx));
+    return cfg.labels[idx];
+  }
+
+  function loadEntries() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      var data = JSON.parse(raw);
+      return Array.isArray(data) ? data : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  var memoryFallback = null;
+  function saveEntries(list) {
+    memoryFallback = list;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  function getEntries() {
+    var stored = loadEntries();
+    if (stored.length === 0 && memoryFallback) return memoryFallback;
+    return stored;
+  }
+
+  // ---------- Aufbau ----------
+  function buildStars() {
+    var box = $("stars");
+    for (var i = 1; i <= 5; i++) {
+      (function (n) {
+        var b = el("button", { type: "button", "class": "star", role: "radio", "aria-checked": "false", "aria-label": n + " Sterne" }, "⭐");
+        b.addEventListener("click", function () { state.stars = n; renderStars(); $("err").textContent = ""; });
+        box.appendChild(b);
+      })(i);
+    }
+  }
+  function renderStars() {
+    var btns = $("stars").children;
+    for (var i = 0; i < btns.length; i++) {
+      var on = i < state.stars;
+      btns[i].classList.toggle("on", on);
+      btns[i].setAttribute("aria-checked", i + 1 === state.stars ? "true" : "false");
+    }
+  }
+
+  function buildSliders() {
+    var box = $("sliders");
+    SLIDERS.forEach(function (cfg) {
+      var row = el("div", { "class": "slider-row" });
+      var head = el("div", { "class": "slider-head" });
+      var lbl = el("span", null, cfg.name);
+      var val = el("span", { "class": "slider-val", id: cfg.id + "Val" });
+      head.appendChild(lbl); head.appendChild(val);
+      var input = el("input", { type: "range", id: cfg.id, min: cfg.min, max: cfg.max, step: 1, value: cfg.start, "aria-label": cfg.name });
+      var desc = el("div", { "class": "slider-label", id: cfg.id + "Desc" });
+      var update = function () {
+        var v = Number(input.value);
+        val.textContent = v + " / " + cfg.max;
+        desc.textContent = sliderLabel(cfg, v);
+      };
+      input.addEventListener("input", update);
+      input.addEventListener("change", update);
+      row.appendChild(head); row.appendChild(input); row.appendChild(desc);
+      box.appendChild(row);
+      update();
+    });
+  }
+
+  function buildToggles() {
+    var box = $("toggles");
+    TOGGLES.forEach(function (cfg) {
+      state.toggles[cfg.id] = false;
+      var b = el("button", { type: "button", "class": "toggle", "aria-pressed": "false", id: "t_" + cfg.id });
+      b.appendChild(el("span", { "class": "emo" }, cfg.emo));
+      b.appendChild(el("span", null, cfg.name));
+      b.addEventListener("click", function () {
+        state.toggles[cfg.id] = !state.toggles[cfg.id];
+        b.classList.toggle("on", state.toggles[cfg.id]);
+        b.setAttribute("aria-pressed", String(state.toggles[cfg.id]));
+        if (cfg.id === "film") $("filmBox").classList.toggle("show", state.toggles.film);
+      });
+      box.appendChild(b);
+    });
+  }
+
+  function buildCounters() {
+    var box = $("counters");
+    COUNTERS.forEach(function (cfg) {
+      state.counters[cfg.id] = 0;
+      var c = el("div", { "class": "counter" });
+      c.appendChild(el("div", { "class": "what" }, cfg.name));
+      var ctl = el("div", { "class": "ctl" });
+      var minus = el("button", { type: "button", "aria-label": "weniger" }, "−");
+      var num = el("span", { "class": "num", id: "c_" + cfg.id }, "0");
+      var plus = el("button", { type: "button", "aria-label": "mehr" }, "+");
+      minus.addEventListener("click", function () {
+        state.counters[cfg.id] = Math.max(0, state.counters[cfg.id] - 1);
+        num.textContent = state.counters[cfg.id];
+      });
+      plus.addEventListener("click", function () {
+        state.counters[cfg.id] = Math.min(999, state.counters[cfg.id] + 1);
+        num.textContent = state.counters[cfg.id];
+      });
+      ctl.appendChild(minus); ctl.appendChild(num); ctl.appendChild(plus);
+      c.appendChild(ctl);
+      box.appendChild(c);
+    });
+  }
+
+  // ---------- Formular ----------
+  function resetForm() {
+    $("form").reset();
+    $("date").value = todayISO();
+    state.stars = 0; renderStars();
+    SLIDERS.forEach(function (cfg) {
+      var input = $(cfg.id);
+      input.value = cfg.start;
+      input.dispatchEvent(new Event("input"));
+    });
+    TOGGLES.forEach(function (cfg) {
+      state.toggles[cfg.id] = false;
+      var b = $("t_" + cfg.id);
+      b.classList.remove("on"); b.setAttribute("aria-pressed", "false");
+    });
+    $("filmBox").classList.remove("show");
+    COUNTERS.forEach(function (cfg) {
+      state.counters[cfg.id] = 0;
+      $("c_" + cfg.id).textContent = "0";
+    });
+    $("err").textContent = "";
+  }
+
+  // Punkte 0–100 aus allen Angaben
+  function computeScore(e) {
+    var s = 0;
+    s += e.stars / 5 * 40;                 // max 40
+    s += e.sliders.chill / 10 * 15;        // max 15
+    s += e.sliders.mood / 10 * 15;         // max 15
+    s += (10 - e.sliders.boring) / 10 * 10; // max 10
+    s += e.sliders.learned / 10 * 10;      // max 10
+    var bonus = 0;
+    if (e.toggles.film) bonus += 4;
+    if (e.toggles.early) bonus += 4;
+    if (e.toggles.noHw) bonus += 3;
+    if (e.toggles.snack) bonus += 3;
+    if (e.toggles.test) bonus -= 4;
+    bonus += Math.min(e.counters.laugh, 5);
+    s += Math.min(bonus, 10);              // max 10 Bonus
+    return Math.max(0, Math.min(100, Math.round(s)));
+  }
+
+  function verdict(score) {
+    if (score >= 90) return { emo: "👑", title: "Legendäre Stunde!", text: "Das war Reli auf Champions-League-Niveau. Frau Miehs hat abgeliefert." };
+    if (score >= 75) return { emo: "🔥", title: "Richtig stark!", text: "Eine Stunde, über die man noch in der Pause redet." };
+    if (score >= 60) return { emo: "😎", title: "Solide Sache", text: "Gute Stunde – nicht perfekt, aber definitiv kein Fehlgriff." };
+    if (score >= 45) return { emo: "🙂", title: "Ganz okay", text: "Ein ganz normaler Reli-Tag. Man hat schon Schlimmeres erlebt." };
+    if (score >= 30) return { emo: "🫠", title: "Eher zäh", text: "Die Uhr ist heute extra langsam gelaufen, oder?" };
+    return { emo: "💀", title: "Überlebt!", text: "Hauptsache durchgehalten. Nächstes Mal wird's bestimmt besser." };
+  }
+
+  function handleSubmit(ev) {
+    ev.preventDefault();
+    var err = $("err");
+    if (!$("date").value) { err.textContent = "Bitte ein Datum auswählen 📅"; $("date").focus(); return; }
+    if (state.stars < 1) {
+      err.textContent = "Bitte noch die Sterne vergeben ⭐";
+      $("stars").scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    err.textContent = "";
+
+    var entry = {
+      id: Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+      date: $("date").value,
+      topic: $("topic").value.trim(),
+      stars: state.stars,
+      sliders: {},
+      toggles: {},
+      counters: {},
+      film: state.toggles.film ? $("film").value.trim() : "",
+      quote: $("quote").value.trim(),
+      comment: $("comment").value.trim(),
+      created: new Date().toISOString()
+    };
+    SLIDERS.forEach(function (cfg) { entry.sliders[cfg.id] = Number($(cfg.id).value); });
+    TOGGLES.forEach(function (cfg) { entry.toggles[cfg.id] = !!state.toggles[cfg.id]; });
+    COUNTERS.forEach(function (cfg) { entry.counters[cfg.id] = state.counters[cfg.id] || 0; });
+    entry.score = computeScore(entry);
+
+    var list = getEntries().slice();
+    list.unshift(entry);
+    var ok = saveEntries(list);
+
+    var v = verdict(entry.score);
+    $("resEmoji").textContent = v.emo;
+    $("resScore").textContent = entry.score + " / 100";
+    $("resTitle").textContent = v.title;
+    $("resText").textContent = v.text + (ok ? "" : " (Hinweis: Speichern auf diesem Gerät ist gerade nicht möglich – die Bewertung bleibt nur bis zum Neuladen.)");
+    $("overlay").classList.add("show");
+    confetti();
+    resetForm();
+    renderHistory();
+  }
+
+  // ---------- Verlauf ----------
+  function stat(value, key) {
+    var s = el("div", { "class": "stat" });
+    s.appendChild(el("div", { "class": "v" }, value));
+    s.appendChild(el("div", { "class": "k" }, key));
+    return s;
+  }
+
+  function avg(list, fn) {
+    if (!list.length) return 0;
+    var sum = 0;
+    list.forEach(function (e) { sum += Number(fn(e)) || 0; });
+    return sum / list.length;
+  }
+
+  function renderHistory() {
+    var list = getEntries();
+    var statsBox = $("stats"), listBox = $("list");
+    statsBox.innerHTML = ""; listBox.innerHTML = "";
+    $("clearAll").classList.toggle("hidden", list.length === 0);
+
+    if (!list.length) {
+      var em = el("div", { "class": "card empty" });
+      em.appendChild(el("div", { "class": "big" }, "📭"));
+      em.appendChild(el("p", null, "Noch keine Bewertungen. Ab ins Formular!"));
+      listBox.appendChild(em);
+      return;
+    }
+
+    var filmCount = list.filter(function (e) { return e.toggles && e.toggles.film; }).length;
+    statsBox.appendChild(stat(String(list.length), "Stunden bewertet"));
+    statsBox.appendChild(stat(avg(list, function (e) { return e.stars; }).toFixed(1).replace(".", ",") + " ⭐", "Ø Sterne"));
+    statsBox.appendChild(stat(Math.round(avg(list, function (e) { return e.score; })) + "", "Ø Punkte"));
+    statsBox.appendChild(stat(Math.round(filmCount / list.length * 100) + " %", "Film-Quote 🎬"));
+    statsBox.appendChild(stat(avg(list, function (e) { return e.sliders ? e.sliders.mood : 0; }).toFixed(1).replace(".", ","), "Ø Laune Frau Miehs"));
+    statsBox.appendChild(stat(avg(list, function (e) { return e.sliders ? e.sliders.chill : 0; }).toFixed(1).replace(".", ","), "Ø Chill-Faktor"));
+
+    list.forEach(function (e) {
+      var card = el("div", { "class": "card entry" });
+      var top = el("div", { "class": "top" });
+      var left = el("div");
+      left.appendChild(el("div", { "class": "date" }, formatDate(e.date) + "  " + "⭐".repeat(Math.max(0, Math.min(5, e.stars || 0)))));
+      left.appendChild(el("div", { "class": "topic" }, e.topic ? "Thema: " + e.topic : "Kein Thema angegeben"));
+      top.appendChild(left);
+      top.appendChild(el("div", { "class": "pts" }, verdict(e.score).emo + " " + e.score));
+      card.appendChild(top);
+
+      var chips = el("div", { "class": "chips" });
+      SLIDERS.forEach(function (cfg) {
+        if (e.sliders && typeof e.sliders[cfg.id] === "number") {
+          chips.appendChild(el("span", { "class": "chip" }, cfg.name.split(" ")[0] + " " + e.sliders[cfg.id] + "/10"));
+        }
+      });
+      TOGGLES.forEach(function (cfg) {
+        if (e.toggles && e.toggles[cfg.id]) {
+          var txt = cfg.emo + " " + cfg.name;
+          if (cfg.id === "film" && e.film) txt += ": " + e.film;
+          chips.appendChild(el("span", { "class": "chip" }, txt));
+        }
+      });
+      COUNTERS.forEach(function (cfg) {
+        var n = e.counters ? e.counters[cfg.id] : 0;
+        if (n > 0) chips.appendChild(el("span", { "class": "chip" }, cfg.name.replace("?", "") + ": " + n));
+      });
+      card.appendChild(chips);
+
+      if (e.quote) card.appendChild(el("div", { "class": "quote" }, "„" + e.quote + "“"));
+      if (e.comment) card.appendChild(el("p", { "class": "topic", style: "margin:10px 0 0" }, e.comment));
+
+      var del = el("button", { type: "button", "class": "del" }, "🗑️ Löschen");
+      del.addEventListener("click", function () {
+        if (!confirm("Diese Bewertung wirklich löschen?")) return;
+        saveEntries(getEntries().filter(function (x) { return x.id !== e.id; }));
+        renderHistory();
+      });
+      card.appendChild(del);
+      listBox.appendChild(card);
+    });
+  }
+
+  // ---------- Tabs ----------
+  function showView(name) {
+    $("form").classList.toggle("hidden", name !== "form");
+    $("history").classList.toggle("hidden", name !== "history");
+    var tabs = document.querySelectorAll(".tab");
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle("active", tabs[i].getAttribute("data-view") === name);
+    if (name === "history") renderHistory();
+    window.scrollTo(0, 0);
+  }
+
+  // ---------- Konfetti ----------
+  function confetti() {
+    var colors = ["#ff5fa2", "#8b5cf6", "#22d3ee", "#34d399", "#fbbf24"];
+    for (var i = 0; i < 70; i++) {
+      var c = el("div", { "class": "confetti" });
+      c.style.left = Math.random() * 100 + "vw";
+      c.style.background = colors[i % colors.length];
+      c.style.animationDuration = (1.8 + Math.random() * 1.8) + "s";
+      c.style.animationDelay = (Math.random() * 0.4) + "s";
+      document.body.appendChild(c);
+      (function (node) { setTimeout(function () { if (node.parentNode) node.parentNode.removeChild(node); }, 4200); })(c);
+    }
+  }
+
+  // ---------- Start ----------
+  buildStars();
+  buildSliders();
+  buildToggles();
+  buildCounters();
+  $("date").value = todayISO();
+
+  $("form").addEventListener("submit", handleSubmit);
+  var tabs = document.querySelectorAll(".tab");
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].addEventListener("click", function () { showView(this.getAttribute("data-view")); });
+  }
+  $("resClose").addEventListener("click", function () { $("overlay").classList.remove("show"); showView("form"); });
+  $("resHistory").addEventListener("click", function () { $("overlay").classList.remove("show"); showView("history"); });
+  $("clearAll").addEventListener("click", function () {
+    if (!confirm("Wirklich ALLE Bewertungen löschen?")) return;
+    saveEntries([]);
+    renderHistory();
+  });
+})();
+
+// ---------- Als App installieren ----------
+(function () {
+  "use strict";
+  var HIDE_KEY = "reliCheck.installHidden";
+  var banner = document.getElementById("install");
+  var txt = document.getElementById("installTxt");
+  var btn = document.getElementById("installBtn");
+  var deferred = null;
+
+  var standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+                   window.navigator.standalone === true;
+  var ua = navigator.userAgent || "";
+  var isIOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+
+  function hiddenByUser() { try { return localStorage.getItem(HIDE_KEY) === "1"; } catch (e) { return false; } }
+  function hide() {
+    banner.classList.remove("show");
+    try { localStorage.setItem(HIDE_KEY, "1"); } catch (e) {}
+  }
+  document.getElementById("installClose").addEventListener("click", hide);
+
+  var shareIcon = '<svg class="share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Teilen-Symbol"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 11v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/></svg>';
+
+  if (!standalone && !hiddenByUser() && isIOS) {
+    txt.innerHTML = "<b>Als App auf den Home-Bildschirm 📲</b>Tippe in Safari auf " + shareIcon +
+      " <b style=\"display:inline\">Teilen</b> und dann auf <b style=\"display:inline\">„Zum Home-Bildschirm“</b>.";
+    banner.classList.add("show");
+  }
+
+  // Chrome / Edge / Android: echter Installieren-Knopf
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    deferred = e;
+    if (standalone || hiddenByUser()) return;
+    txt.innerHTML = "<b>Reli-Check als App installieren 📲</b>Dann hast du sie direkt auf dem Startbildschirm.";
+    btn.classList.remove("hidden");
+    banner.classList.add("show");
+  });
+  btn.addEventListener("click", function () {
+    if (!deferred) return;
+    deferred.prompt();
+    deferred.userChoice.then(function () { deferred = null; banner.classList.remove("show"); });
+  });
+  window.addEventListener("appinstalled", function () { banner.classList.remove("show"); });
+
+  // Offline-Modus (funktioniert nur über https bzw. localhost)
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
